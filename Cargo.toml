@@ -12,7 +12,7 @@ wasm-opt = false
 crate-type = ["cdylib"]
 
 [dependencies]
-vibrato = { version = "0.5", default-features = false }
+vibrato = { git = "https://github.com/daac-tools/vibrato.git", rev = "4b19da33c0a6f4bcf1c8185c1a4eec794a7b126b", default-features = false }
 wasm-bindgen = "0.2"
 serde = { version = "1", features = ["derive"] }
 serde-wasm-bindgen = "0.6"

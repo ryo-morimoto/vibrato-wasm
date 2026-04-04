@@ -1,0 +1,128 @@
+name: Update vibrato
+
+on:
+  schedule:
+    # 毎日 09:00 UTC (18:00 JST)
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get current vibrato rev
+        id: current
+        run: |
+          # Cargo.lock から現在の vibrato の git rev を取得
+          # git 依存の場合は source URL から、crates.io の場合は version から
+          if grep -A2 'name = "vibrato"' Cargo.lock | grep -q 'source = "git'; then
+            rev=$(grep -A2 'name = "vibrato"' Cargo.lock | grep 'source' | sed 's/.*#//')
+            echo "rev=$rev" >> "$GITHUB_OUTPUT"
+            echo "type=git" >> "$GITHUB_OUTPUT"
+          else
+            ver=$(grep -A2 'name = "vibrato"' Cargo.lock | grep 'version' | head -1 | sed 's/.*"\(.*\)"/\1/')
+            echo "rev=$ver" >> "$GITHUB_OUTPUT"
+            echo "type=crates" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Current: $(cat "$GITHUB_OUTPUT")"
+
+      - name: Get latest vibrato commit
+        id: latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha=$(gh api repos/daac-tools/vibrato/commits/main --jq '.sha')
+          short=$(echo "$sha" | cut -c1-7)
+          msg=$(gh api repos/daac-tools/vibrato/commits/main --jq '.commit.message' | head -1)
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "short=$short" >> "$GITHUB_OUTPUT"
+          echo "msg=$msg" >> "$GITHUB_OUTPUT"
+          echo "Latest: $short $msg"
+
+      - name: Check if update needed
+        id: check
+        run: |
+          if [ "${{ steps.current.outputs.type }}" = "git" ]; then
+            current="${{ steps.current.outputs.rev }}"
+            latest="${{ steps.latest.outputs.sha }}"
+            if [ "$current" = "$latest" ]; then
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              echo "Already up to date: $current"
+            else
+              echo "skip=false" >> "$GITHUB_OUTPUT"
+              echo "Update available: $current -> $latest"
+            fi
+          else
+            # crates.io 依存 → git 依存に切り替える必要がある
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "Switching from crates.io to git dependency"
+          fi
+
+      - name: Install Rust
+        if: steps.check.outputs.skip != 'true'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        if: steps.check.outputs.skip != 'true'
+        run: cargo install wasm-pack
+
+      - name: Install just
+        if: steps.check.outputs.skip != 'true'
+        uses: extractions/setup-just@v3
+
+      - name: Update vibrato dependency
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          sha="${{ steps.latest.outputs.sha }}"
+
+          # Cargo.toml の vibrato 行を git 依存に更新
+          sed -i "s|vibrato = .*|vibrato = { git = \"https://github.com/daac-tools/vibrato.git\", rev = \"$sha\", default-features = false }|" Cargo.toml
+
+          # Cargo.lock を更新
+          cargo update vibrato
+
+      - name: Build wasm
+        if: steps.check.outputs.skip != 'true'
+        run: just build
+
+      - name: Create PR
+        if: steps.check.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          short="${{ steps.latest.outputs.short }}"
+          msg="${{ steps.latest.outputs.msg }}"
+          branch="update-vibrato-${short}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add Cargo.toml Cargo.lock
+          git commit -m "chore: update vibrato to daac-tools/vibrato@${short}
+
+          ${msg}"
+          git push origin "$branch"
+
+          gh pr create \
+            --title "chore: update vibrato to ${short}" \
+            --body "$(cat <<EOF
+          ## Summary
+
+          - Update vibrato to [daac-tools/vibrato@\`${short}\`](https://github.com/daac-tools/vibrato/commit/${{ steps.latest.outputs.sha }})
+          - Commit message: ${msg}
+          - wasm build: ✅ passed
+
+          ## Checklist
+
+          - [ ] wasm サイズに異常な変化がないか確認
+          - [ ] tag を打って JSR publish
+          EOF
+          )"
