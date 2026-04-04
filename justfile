@@ -22,4 +22,4 @@ verify:
 
 # JSR publish dry-run
 publish-dry-run: build verify
-    deno publish --dry-run
+    npx jsr publish --dry-run
