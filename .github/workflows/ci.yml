@@ -30,4 +30,4 @@ jobs:
         run: just verify
 
       - name: Dry-run publish
-        run: npx jsr publish --dry-run
+        run: just publish-dry-run

@@ -23,3 +23,7 @@ verify:
 # JSR publish dry-run
 publish-dry-run: build verify
     npx jsr publish --dry-run
+
+# JSR publish
+publish: optimize verify
+    npx jsr publish
