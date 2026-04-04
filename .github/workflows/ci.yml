@@ -20,20 +20,17 @@ jobs:
       - name: Install wasm-pack
         run: cargo install wasm-pack
 
+      - name: Install just
+        uses: extractions/setup-just@v3
+
       - name: Build wasm
-        run: bash scripts/build.sh
+        run: just build
 
       - name: Verify pkg contents
-        run: |
-          test -f pkg/vibrato_wasm_bg.wasm
-          test -f pkg/vibrato_wasm_bg.js
-          test -f pkg/mod.ts
-          test -f pkg/slim.ts
-          test -f pkg/types.ts
-          echo "All expected files present"
+        run: just verify
 
       - name: Setup Deno
         uses: denoland/setup-deno@v2
 
       - name: Dry-run publish
-        run: deno publish --dry-run
+        run: just publish-dry-run
