@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: cargo install wasm-pack
+
+      - name: Build wasm
+        run: bash scripts/build.sh
+
+      - name: Verify pkg contents
+        run: |
+          test -f pkg/vibrato_wasm_bg.wasm
+          test -f pkg/vibrato_wasm_bg.js
+          test -f pkg/mod.ts
+          test -f pkg/slim.ts
+          test -f pkg/types.ts
+          echo "All expected files present"
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+
+      - name: Dry-run publish
+        run: deno publish --dry-run

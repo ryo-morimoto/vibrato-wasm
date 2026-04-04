@@ -1,0 +1,21 @@
+{
+  "name": "@ryo-morimoto/vibrato-wasm",
+  "version": "0.1.0",
+  "exports": {
+    ".": "./lib/mod.ts",
+    "./slim": "./lib/slim.ts",
+    "./types": "./lib/types.ts"
+  },
+  "publish": {
+    "include": [
+      "lib/mod.ts",
+      "lib/init.ts",
+      "lib/slim.ts",
+      "lib/types.ts",
+      "pkg/vibrato_wasm_bg.js",
+      "pkg/vibrato_wasm_bg.wasm",
+      "pkg/vibrato_wasm.d.ts",
+      "LICENSE"
+    ]
+  }
+}

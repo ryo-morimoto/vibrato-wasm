@@ -1,0 +1,43 @@
+name: Publish to JSR
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: cargo install wasm-pack
+
+      - name: Install binaryen (wasm-opt)
+        run: sudo apt-get install -y binaryen
+
+      - name: Build wasm
+        run: bash scripts/build.sh
+
+      - name: Optimize wasm with wasm-opt
+        run: |
+          wasm-opt -Oz -o pkg/vibrato_wasm_bg.wasm.opt pkg/vibrato_wasm_bg.wasm
+          mv pkg/vibrato_wasm_bg.wasm.opt pkg/vibrato_wasm_bg.wasm
+          echo "Optimized: $(wc -c < pkg/vibrato_wasm_bg.wasm) bytes (raw)"
+          echo "         : $(gzip -c pkg/vibrato_wasm_bg.wasm | wc -c) bytes (gzip)"
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+
+      - name: Publish to JSR
+        run: deno publish
