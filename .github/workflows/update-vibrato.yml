@@ -123,6 +123,6 @@ jobs:
           ## Checklist
 
           - [ ] wasm サイズに異常な変化がないか確認
-          - [ ] tag を打って JSR publish
+          - [ ] tagpr の release PR を merge して publish
           EOF
           )"

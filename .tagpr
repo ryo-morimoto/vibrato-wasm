@@ -1,0 +1,7 @@
+[tagpr]
+	vPrefix = true
+	releaseBranch = main
+	versionFile = jsr.json
+	changelog = false
+	release = false
+	commitPrefix = chore(release):

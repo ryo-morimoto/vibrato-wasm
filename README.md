@@ -63,6 +63,13 @@ tar xf ipadic-mecab-2_7_0.tar.xz
 bash scripts/build.sh
 ```
 
+## Release
+
+- `main` への push で `tagpr` が release PR を作成または更新する
+- release PR を merge すると tag が作成され、同じ GitHub Actions run で JSR publish と GitHub Release 作成まで実行される
+- release version は `jsr.json` の `version` を source of truth とする
+- 初回セットアップ時に GitHub の `Settings > Actions > General` で `Allow GitHub Actions to create and approve pull requests` を有効にする
+
 ## ライセンス
 
 Apache-2.0

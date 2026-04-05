@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - id: tagpr
+        uses: Songmu/tagpr@e7ae290f5cc5faabfdb4d131f8e4ce073ad8b3e2 # v1.18.0
+        with:
+          config: .tagpr
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve release tag
+        id: release_tag
+        env:
+          TAGPR_TAG: ${{ steps.tagpr.outputs.tag }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          git fetch --force --tags origin
+
+          tag="$TAGPR_TAG"
+          if [ -z "$tag" ]; then
+            tag="$(git tag --points-at "$GITHUB_SHA" "v*" | sort -V | tail -n 1)"
+          fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Verify release version
+        if: steps.release_tag.outputs.tag != ''
+        env:
+          RELEASE_TAG: ${{ steps.release_tag.outputs.tag }}
+        run: |
+          expected="${RELEASE_TAG#v}"
+          actual="$(node -p "require('./jsr.json').version")"
+          test "$expected" = "$actual"
+
+      - name: Install Rust
+        if: steps.release_tag.outputs.tag != ''
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        if: steps.release_tag.outputs.tag != ''
+        run: cargo install wasm-pack
+
+      - name: Install binaryen (wasm-opt)
+        if: steps.release_tag.outputs.tag != ''
+        run: sudo apt-get install -y binaryen
+
+      - name: Install just
+        if: steps.release_tag.outputs.tag != ''
+        uses: extractions/setup-just@f8a3cce218d9f83db3a2ecd90e41ac3de6cdfd9b # v3
+
+      - name: Publish to JSR
+        if: steps.release_tag.outputs.tag != ''
+        run: just publish
+
+      - name: Create GitHub Release
+        if: steps.release_tag.outputs.tag != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ steps.release_tag.outputs.tag }}
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            exit 0
+          fi
+
+          gh release create "$RELEASE_TAG" --verify-tag --generate-notes
