@@ -22,7 +22,7 @@ jobs:
           # Cargo.lock から現在の vibrato の git rev を取得
           # git 依存の場合は source URL から、crates.io の場合は version から
           if grep -A2 'name = "vibrato"' Cargo.lock | grep -q 'source = "git'; then
-            rev=$(grep -A2 'name = "vibrato"' Cargo.lock | grep 'source' | sed 's/.*#//')
+            rev=$(grep -A2 'name = "vibrato"' Cargo.lock | grep 'source' | sed 's/.*#//' | tr -d '"')
             echo "rev=$rev" >> "$GITHUB_OUTPUT"
             echo "type=git" >> "$GITHUB_OUTPUT"
           else
