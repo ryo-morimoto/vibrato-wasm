@@ -9,7 +9,7 @@ build:
 
 # wasm-opt でサイズ最適化
 optimize: build
-    wasm-opt -Oz --enable-bulk-memory -o pkg/vibrato_wasm_bg.wasm.opt pkg/vibrato_wasm_bg.wasm
+    wasm-opt -Oz --enable-bulk-memory --enable-sign-ext --enable-mutable-globals -o pkg/vibrato_wasm_bg.wasm.opt pkg/vibrato_wasm_bg.wasm
     mv pkg/vibrato_wasm_bg.wasm.opt pkg/vibrato_wasm_bg.wasm
     @echo "Optimized: $(wc -c < pkg/vibrato_wasm_bg.wasm) bytes (raw)"
     @echo "         : $(gzip -c pkg/vibrato_wasm_bg.wasm | wc -c) bytes (gzip)"
